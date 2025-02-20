@@ -3,35 +3,43 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 
-# Load YOLO model
-model = YOLO("yolov8n.pt")
+# Load YOLO model (using medium version for better accuracy)
+model = YOLO("yolov8m.pt")
+
+# Define vehicle classes (COCO dataset: 2=car, 3=motorcycle, 5=bus, 7=truck)
+VEHICLE_CLASSES = {2, 3, 5, 7}
 
 def process_image(image_path):
-    # Load image
+    # Load and resize image
     image = cv2.imread(image_path)
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # Perform object detection
-    results = model(image_rgb)
+    # Perform object detection with tuned confidence & IoU thresholds
+    results = model(image_rgb, conf=0.4, iou=0.5)
 
-    # Count vehicles
-    vehicle_classes = [2, 3, 5, 7]  # Car, motorcycle, bus, truck (COCO dataset)
-    vehicle_count = sum(1 for r in results[0].boxes.cls if int(r) in vehicle_classes)
+    # Extract detected objects
+    detected_boxes = results[0].boxes
+    detected_classes = detected_boxes.cls.cpu().numpy()
 
-    # Estimate green signal time (simple formula: 5 sec per vehicle)
-    green_time = min(vehicle_count * 5, 60)
+    # Count vehicles based on class
+    vehicle_count = sum(1 for cls in detected_classes if int(cls) in VEHICLE_CLASSES)
 
-    # Convert back to PIL for drawing
+    # Estimate green signal time (more refined: base + per vehicle time)
+    base_time = 10  # Base green time (seconds)
+    extra_time_per_vehicle = 3  # Additional seconds per vehicle
+    green_time = min(base_time + vehicle_count * extra_time_per_vehicle, 60)
+
+    # Convert image to PIL for annotation
     pil_image = Image.fromarray(image_rgb)
     draw = ImageDraw.Draw(pil_image)
 
-    # Load font (Try arial.ttf, else use default)
+    # Load font safely
     try:
         font = ImageFont.truetype("arial.ttf", 40)
     except IOError:
         font = ImageFont.load_default()
 
-    # Draw text
+    # Draw text with vehicle count and time
     text = f"Vehicles: {vehicle_count} | Time: {green_time}s"
     text_position = (20, 20)
     draw.text(text_position, text, font=font, fill=(255, 0, 0))
@@ -40,3 +48,4 @@ def process_image(image_path):
     processed_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
 
     return vehicle_count, green_time, processed_image
+
