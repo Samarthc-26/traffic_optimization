@@ -9,7 +9,7 @@ This project detects the number of vehicles at a traffic intersection using YOLO
 
 
 🌍 Live Demo
-🔗 Deployed App: Your Streamlit App URL
+🔗 Deployed App: https://trafficoptimization-data4moz.streamlit.app/
 
 
 
