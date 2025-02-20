@@ -36,7 +36,7 @@ streamlit run main.py
 🌍 Live Demo
 🔗 Deployed App: Your Streamlit App URL
 
-Let me know if you need any changes! 🚀🔥
+
 
 
 
