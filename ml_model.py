@@ -1,51 +1,42 @@
-from ultralytics import YOLO
+from PIL import Image, ImageDraw, ImageFont
 import cv2
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from ultralytics import YOLO
 
-# Load YOLO model (use a better model for accuracy)
-model = YOLO("yolov8m.pt")  # Use 'yolov8m.pt' instead of 'yolov8n.pt' for better accuracy
-
+# Load YOLO model
+model = YOLO("yolov8n.pt")
 
 def process_image(image_path):
-    """Detects vehicles and calculates green light timing without saving output image."""
-
     # Load image
     image = cv2.imread(image_path)
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # Perform detection
-    results = model(image)
+    # Perform object detection
+    results = model(image_rgb)
 
-    # Get detected objects
-    vehicle_classes = [2, 3, 5, 7]  # Car, Motorcycle, Bus, Truck
-    vehicle_count = sum(1 for box in results[0].boxes if int(box.cls) in vehicle_classes)
+    # Count vehicles
+    vehicle_classes = [2, 3, 5, 7]  # Car, motorcycle, bus, truck (COCO dataset)
+    vehicle_count = sum(1 for r in results[0].boxes.cls if int(r) in vehicle_classes)
 
-    # Define green light timing formula
-    green_time = max(10, min(vehicle_count * 2, 60))
+    # Estimate green signal time (simple formula: 5 sec per vehicle)
+    green_time = min(vehicle_count * 5, 60)
 
-    # Convert image to PIL format for drawing
-    image_pil = Image.open(image_path)
-    draw = ImageDraw.Draw(image_pil)
+    # Convert back to PIL for drawing
+    pil_image = Image.fromarray(image_rgb)
+    draw = ImageDraw.Draw(pil_image)
 
-    # Load font (larger size for visibility)
-    font = ImageFont.truetype("arial.ttf", 40)
+    # Load font (Try arial.ttf, else use default)
+    try:
+        font = ImageFont.truetype("arial.ttf", 40)
+    except IOError:
+        font = ImageFont.load_default()
 
-    # Define text
-    text = f"Vehicles: {vehicle_count} | Green Light: {green_time}s"
+    # Draw text
+    text = f"Vehicles: {vehicle_count} | Time: {green_time}s"
+    text_position = (20, 20)
+    draw.text(text_position, text, font=font, fill=(255, 0, 0))
 
-    # Get image dimensions
-    img_width, img_height = image_pil.size
+    # Convert back to OpenCV format
+    processed_image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
 
-    # Calculate text position (bottom-center)
-    text_width, text_height = draw.textbbox((0, 0), text, font=font)[2:]
-    text_x = (img_width - text_width) // 2
-    text_y = img_height - text_height - 10
-
-    # Add a background rectangle for visibility
-    draw.rectangle([(text_x - 10, text_y - 10), (text_x + text_width + 10, text_y + text_height + 10)], fill="black")
-
-    # Draw text in white
-    draw.text((text_x, text_y), text, fill="white", font=font)
-
-    return vehicle_count, green_time, image_pil  # Return the modified PIL image instead of saving it
-
+    return vehicle_count, green_time, processed_image
