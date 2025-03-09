@@ -12,5 +12,5 @@ if uploaded_file:
     # Call function from `ml_model.py`
     vehicle_count, green_time, processed_image = process_image("temp.jpg")
 
-    # Display processed output directly
-    st.image(processed_image, caption=f"Detected Vehicles: {vehicle_count} | Green Light: {green_time}s", use_column_width=True)
+    # Display processed output with the new parameter
+    st.image(processed_image, caption=f"Detected Vehicles: {vehicle_count} | Green Light: {green_time}s", use_container_width=True)
